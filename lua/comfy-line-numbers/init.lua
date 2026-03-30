@@ -104,13 +104,10 @@ local should_hide_numbers = function(filetype, buftype)
 end
 
 -- Defined on the global namespace to be used in Vimscript below.
-_G.comfy_line_get_label = function(absnum, relnum)
+_G.comfy_line_get_label = function(absnum, relnum, width)
   if not enabled then
     return absnum
   end
-
-  -- Use numberwidth for consistent padding (set in update_status_column)
-  local width = vim.wo.numberwidth
 
   -- Check if relativenumber is enabled (respects nvim-numbertoggle)
   if not vim.wo.relativenumber then
@@ -130,23 +127,25 @@ _G.comfy_line_get_label = function(absnum, relnum)
 end
 
 local function update_status_column()
-  for _, win in ipairs(vim.api.nvim_list_wins()) do
-    local buf = vim.api.nvim_win_get_buf(win)
-    local buftype = vim.bo[buf].buftype
-    local filetype = vim.bo[buf].filetype
+	for _, win in ipairs(vim.api.nvim_list_wins()) do
+		local buf = vim.api.nvim_win_get_buf(win)
+		local buftype = vim.bo[buf].buftype
+		local filetype = vim.bo[buf].filetype
 
-    if not should_hide_numbers(filetype, buftype) then
-      vim.api.nvim_win_call(win, function()
-        -- Calculate and set consistent width based on total lines
-        -- Minimum 4 to fit longest custom labels (e.g., "1444")
-        local total_lines = vim.api.nvim_buf_line_count(buf)
-        local width = math.max(4, #tostring(total_lines))
-        vim.wo[win].numberwidth = width
-
-        vim.opt.statuscolumn = '%=%s%=%{v:virtnum > 0 ? "" : v:lua.comfy_line_get_label(v:lnum, v:relnum)} '
-      end)
-    end
-  end
+		if not should_hide_numbers(filetype, buftype) then
+			-- Calculate and set consistent width based on total lines
+			-- Minimum 4 to fit longest custom labels (e.g., "1444")
+			local total_lines = vim.api.nvim_buf_line_count(buf)
+			local width = math.max(4, #tostring(total_lines))
+			vim.wo[win].numberwidth = width
+			-- if wrap line use "", (virtnum > 0)
+			-- if not, use comfy_line_get_label
+			-- width : Use numberwidth for consistent padding (set in update_status_column)
+			local new_line_expr = string.format('%%%%{v:virtnum > 0 ? "" : v:lua.comfy_line_get_label(v:lnum, v:relnum, %d)}', width)
+			local old_statuscolumn = vim.wo[win].statuscolumn
+			vim.wo[win].statuscolumn = old_statuscolumn:gsub('%%l', new_line_expr)
+		end
+	end
 end
 
 function M.enable_line_numbers()
