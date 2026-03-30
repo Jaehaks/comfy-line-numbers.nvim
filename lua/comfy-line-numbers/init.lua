@@ -181,7 +181,7 @@ end
 local function create_auto_commands()
   local group = vim.api.nvim_create_augroup("ComfyLineNumbers", { clear = true })
 
-  vim.api.nvim_create_autocmd({ "WinNew", "BufWinEnter", "BufEnter", "TermOpen", "InsertEnter", "InsertLeave", "FileType" }, {
+  vim.api.nvim_create_autocmd({ "WinNew", "BufWinEnter", "BufEnter", "TermOpen", "FileType" }, {
     group = group,
     pattern = "*",
     callback = update_status_column
