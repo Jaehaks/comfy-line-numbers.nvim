@@ -135,11 +135,7 @@ function update_status_column()
     local buftype = vim.bo[buf].buftype
     local filetype = vim.bo[buf].filetype
 
-    if should_hide_numbers(filetype, buftype) then
-      vim.api.nvim_win_call(win, function()
-        vim.opt.statuscolumn = ''
-      end)
-    else
+    if not should_hide_numbers(filetype, buftype) then
       vim.api.nvim_win_call(win, function()
         -- Calculate and set consistent width based on total lines
         -- Minimum 4 to fit longest custom labels (e.g., "1444")
