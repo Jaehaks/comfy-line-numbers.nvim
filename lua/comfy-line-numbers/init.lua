@@ -119,7 +119,7 @@ _G.get_label = function(absnum, relnum)
 
   if relnum == 0 then
     -- Pad current line number to match width
-    return string.format("%" .. width .. "d", vim.fn.line ".")
+    return string.format("%" .. width .. "d", absnum)
   elseif relnum > 0 and relnum <= #M.config.labels then
     -- Pad label to consistent width
     return string.format("%" .. width .. "s", M.config.labels[relnum])
