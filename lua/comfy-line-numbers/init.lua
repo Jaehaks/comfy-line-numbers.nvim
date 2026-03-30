@@ -129,7 +129,7 @@ _G.get_label = function(absnum, relnum)
   end
 end
 
-function update_status_column()
+local function update_status_column()
   for _, win in ipairs(vim.api.nvim_list_wins()) do
     local buf = vim.api.nvim_win_get_buf(win)
     local buftype = vim.bo[buf].buftype
@@ -168,7 +168,7 @@ function M.disable_line_numbers()
     return
   end
 
-  for index, label in ipairs(M.config.labels) do
+  for _, label in ipairs(M.config.labels) do
     vim.keymap.del({ 'n', 'v', 'o' }, label .. M.config.up_key)
     vim.keymap.del({ 'n', 'v', 'o' }, label .. M.config.down_key)
   end
@@ -178,7 +178,7 @@ function M.disable_line_numbers()
   update_status_column()
 end
 
-function create_auto_commands()
+local function create_auto_commands()
   local group = vim.api.nvim_create_augroup("ComfyLineNumbers", { clear = true })
 
   vim.api.nvim_create_autocmd({ "WinNew", "BufWinEnter", "BufEnter", "TermOpen", "InsertEnter", "InsertLeave", "FileType" }, {
