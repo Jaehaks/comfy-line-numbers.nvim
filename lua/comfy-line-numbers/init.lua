@@ -4,6 +4,7 @@
 -- `:lua package.loaded['plugin-template'] = nil`
 
 local enabled = false
+local global_statuscolumn = vim.go.statuscolumn
 
 local DEFAULT_LABELS = {
   "1",
@@ -93,8 +94,8 @@ local M = {
     labels = DEFAULT_LABELS,
     up_key = 'k',
     down_key = 'j',
-    hidden_file_types = { 'undotree' },
-    hidden_buffer_types = { 'terminal', 'nofile' }
+    hidden_file_types = { 'dashboard', 'help', 'gitcommit', 'diff', 'undotree' },
+    hidden_buffer_types = { 'terminal', 'prompt', 'nofile' }
   }
 }
 
@@ -132,11 +133,24 @@ M.comfy_line_get_label = function(absnum, relnum, width)
   end
 end
 
+--- restore status column depends on original user setting
+---@param win integer window id
+local function restore_status_column(win)
+  local bufnr = vim.api.nvim_win_get_buf(win)
+  if vim.b[bufnr].origin_statuscolumn then
+    vim.wo[win].statuscolumn = vim.b[bufnr].origin_statuscolumn
+    vim.b[bufnr].origin_statuscolumn = nil
+  end
+end
+
 --- set comfy line number to win
 ---@param win integer window id to change statuscolumn
 local function set_comfy_status_column(win)
   local bufnr = vim.api.nvim_win_get_buf(win)
-  if should_hide_numbers(bufnr) then return end
+  if should_hide_numbers(bufnr) then
+      restore_status_column(win) -- if the buffer was set already, restore. TermOpen occurs after BufEnter
+	  return
+  end
 
   -- Calculate and set consistent width based on total lines
   -- Minimum 4 to fit longest custom labels (e.g., "1444")
@@ -145,8 +159,11 @@ local function set_comfy_status_column(win)
   vim.wo[win].numberwidth = width
 
   -- save original status column
-  if vim.w[win].origin_statuscolumn == nil then
-    vim.w[win].origin_statuscolumn = vim.wo[win].statuscolumn
+  -- To prevent to contaminate original statuscolumn by comfy when switching buffer in one window,
+  -- check the statuscolumn is already changed by comfy-line-numbers, if it is, use global status column
+  if vim.b[bufnr].origin_statuscolumn == nil then
+	  local cur_stc = vim.wo[win].statuscolumn
+	  vim.b[bufnr].origin_statuscolumn = cur_stc:find("comfy%-line%-numbers") and global_statuscolumn or cur_stc
   end
 
   -- if wrap line use "", (virtnum > 0)
@@ -154,17 +171,8 @@ local function set_comfy_status_column(win)
   -- width : Use numberwidth for consistent padding (set in update_status_column)
   local called = string.format('v:lua.require("comfy-line-numbers").comfy_line_get_label(v:lnum, v:relnum, %d)', width)
   local new_line_expr = string.format('%%%%{v:virtnum > 0 ? repeat(" ", %d) : %s}', width, called)
-  local old_statuscolumn = vim.w[win].origin_statuscolumn
+  local old_statuscolumn = vim.b[bufnr].origin_statuscolumn
   vim.wo[win].statuscolumn = old_statuscolumn:gsub('%%l', new_line_expr)
-end
-
---- restore status column depends on original user setting
----@param win integer window id
-local function restore_status_column(win)
-  if vim.w[win].origin_statuscolumn then
-    vim.wo[win].statuscolumn = vim.w[win].origin_statuscolumn
-    vim.w[win].origin_statuscolumn = nil
-  end
 end
 
 --- update statuscolumn for entire windows
@@ -207,7 +215,7 @@ end
 --- create autocmd for update all status column
 local function create_auto_commands()
   local group = vim.api.nvim_create_augroup("ComfyLineNumbers", { clear = true })
-  vim.api.nvim_create_autocmd({ "WinNew", "BufWinEnter", "BufEnter", "FileType" }, {
+  vim.api.nvim_create_autocmd({ "WinNew", "BufWinEnter", "BufEnter", "FileType", 'TermOpen' }, {
     group = group,
     pattern = "*",
     callback = function () update_all_status_column(enabled) end
@@ -237,7 +245,6 @@ function M.setup(config)
     { nargs = 1 }
   )
 
-  vim.opt.relativenumber = true
   create_auto_commands()
   M.enable_line_numbers()
 end
